@@ -1,0 +1,42 @@
+<mujoco model="Kondo_scene_sts">
+    <include file="kondo_5.xml"/>
+
+    <worldbody>
+        <geom name="floor" pos = "0 0 0" size="0 0 .05" type="plane" material="grid" condim="3"/>
+        <geom name="chair" pos="-0.12 0 0.09" size="0.1 0.1 0.03" type="box" rgba="0 0.5 0.5 1" condim="3"/>
+    </worldbody>
+
+    <keyframe>
+     <!--
+     The values below are split into rows for readibility:
+       floating frame position X Y Z
+       floating frame orientation quaternion
+       right leg
+       left leg
+       neck yaw
+       waist yaw
+       right arm (pitch-roll-yaw-pitch)
+       left arm
+    -->
+    <key name="sitting_hands_close" qpos='
+        -0.0579181 0.000930457 0.23012
+        1 0 0 0
+        0 0 -1.57 1.57 0 0
+        0 0 -1.57 1.57 0 0
+        0 0
+        0 -0.04712 -0.37696 -1.67276
+        0 -0.04712 0.37696 -1.67276'/>
+
+
+    <key name="standing" qpos='
+    0.0070819 0.000930457 0.28012
+    1 0 0 0
+    -1.75038e-31 2.43692e-17 -0.460956 0.940801 -0.479845 1.09647e-16
+    -2.5316e-31 -1.6559e-16 -0.460956 0.940801 -0.479845 1.29282e-15
+    0 0
+    0 -0.04712 -0.37696 -1.67276
+    0 -0.04712 0.37696 -1.67276'/>
+
+    </keyframe>
+
+</mujoco>
