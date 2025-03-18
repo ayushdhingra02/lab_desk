@@ -29,7 +29,7 @@ class Runner_Args(PrefixProto, cli=False):
     max_iterations = 15000000  # number of policy updates
 
     # logging
-    save_interval = 10000  # check for potential saves every this many iterations
+    save_interval = 1000  # check for potential saves every this many iterations
     save_video_interval = False
     log_freq = 5
 
@@ -96,9 +96,13 @@ class Runner:
 
         num_train_envs = self.env.unwrapped.num_train_envs
         obs_dict = self.env.unwrapped.get_observations()
-        obs = torch.tensor(obs_dict, device=self.device, dtype=torch.float32).unsqueeze(0)
-        privileged_obs = obs
-        obs_history = obs
+        # obs_dict = self.env.get_observations()
+        obs = obs_dict["obs"]
+        obs = torch.tensor(obs, device=self.device, dtype=torch.float32).unsqueeze(0)
+        privileged_obs = obs_dict["privileged_obs"]
+        privileged_obs = torch.tensor(privileged_obs, device=self.device, dtype=torch.float32).unsqueeze(0)
+        obs_history = obs_dict["obs_history"]
+        obs_history = torch.tensor(obs_history, device=self.device, dtype=torch.float32).unsqueeze(0)
 
         self.alg.actor_critic.train()
 
@@ -120,9 +124,13 @@ class Runner:
                     ret = self.env.step(actions_train[0])
                     obs_dict, rewards, done, truncation, infos = ret
 
-                    obs = torch.tensor(obs_dict, dtype=torch.float32).to(self.device).unsqueeze(0)
-                    privileged_obs = obs
-                    obs_history = obs
+                    obs = obs_dict["obs"]
+                    obs = torch.tensor(obs, device=self.device, dtype=torch.float32).unsqueeze(0)
+                    privileged_obs = obs_dict["privileged_obs"]
+                    privileged_obs = torch.tensor(privileged_obs, device=self.device, dtype=torch.float32).unsqueeze(0)
+                    obs_history = obs_dict["obs_history"]
+                    obs_history = torch.tensor(obs_history, device=self.device, dtype=torch.float32).unsqueeze(0)
+
                     if done or truncation:
                         rewards-=10
                         flag=1
@@ -170,11 +178,13 @@ class Runner:
 
             # Save model and log losses
             if it % Runner_Args.save_interval == 0:
-                checkpoint_dir = './checkpoints1_prev'
+                checkpoint_dir = './checkpoints1_prev1'
                 os.makedirs(checkpoint_dir, exist_ok=True)
-                torch.save(self.alg.actor_critic.state_dict(), f"{checkpoint_dir}/ac_weights_{it:06d}.pt")
-                torch.save(self.alg.actor_critic.state_dict(), f"{checkpoint_dir}/ac_weights_last.pt")
-
+                torch.save({
+                    'iteration': it,
+                    'model_state_dict': self.alg.actor_critic.state_dict(),
+                    'optimizer_state_dict': self.alg.optimizer.state_dict()
+                }, f"{checkpoint_dir}/ac_checkpoint_{it:06d}.pt")
 
         self.writer.close()
 

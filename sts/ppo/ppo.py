@@ -15,13 +15,13 @@ class PPO_Args(PrefixProto):
     use_clipped_value_loss = True
     clip_param = 0.2
     entropy_coef = 0.01
-    num_learning_epochs = 5
+    num_learning_epochs = 10
     num_mini_batches = 8  # mini batch size = num_envs*nsteps / nminibatches
-    learning_rate = 1.e-3  # 5.e-4
+    learning_rate = 5.e-4  # 5.e-4
     adaptation_module_learning_rate = 1.e-3
     num_adaptation_module_substeps = 1
     schedule = 'adaptive'  # could be adaptive, fixed
-    gamma = 0.99
+    gamma = 0.98
     lam = 0.95
     desired_kl = 0.01
     max_grad_norm = 1.
@@ -40,6 +40,7 @@ class PPO:
         self.actor_critic.to(device)
         self.storage = None  # initialized later
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=PPO_Args.learning_rate)
+        torch.autograd.set_detect_anomaly(True)
         self.adaptation_module_optimizer = optim.Adam(self.actor_critic.parameters(),
                                                       lr=PPO_Args.adaptation_module_learning_rate)
         if self.actor_critic.decoder:
@@ -142,9 +143,18 @@ class PPO:
                                 (value_batch - target_values_batch).clamp(-PPO_Args.clip_param,
                                                                           PPO_Args.clip_param)
                 value_losses = (value_batch - returns_batch).pow(2)
+                # print(f"value_clipped min: {value_clipped.min()}, max: {value_clipped.max()}")
+                # print(f"returns_batch min: {returns_batch.min()}, max: {returns_batch.max()}")
+
+                if torch.isnan(value_clipped).any():
+                    print("NaN detected in value_clipped!")
+                if torch.isnan(returns_batch).any():
+                    print("NaN detected in returns_batch!")
+
                 value_losses_clipped = (value_clipped - returns_batch).pow(2)
                 value_loss = torch.max(value_losses, value_losses_clipped).mean()
             else:
+
                 value_loss = (returns_batch - value_batch).pow(2).mean()
 
             loss = surrogate_loss + PPO_Args.value_loss_coef * value_loss - PPO_Args.entropy_coef * entropy_batch.mean()

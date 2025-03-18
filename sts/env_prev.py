@@ -258,6 +258,67 @@ class HumanoidEnv(MujocoEnv):
         return -np.exp(c * ((x_hat - x) ** 2))
     def _get_rew(self, x_velocity: float, action):
 
+        torso_height = self.data.xpos[self.model.body("Torso").id][2]
+        r_stand = 50 * max(0, 0.28 - abs(torso_height - self.target_height))
+
+        # Balance reward
+        zmp_robot = self.calculate_zmp()  # Use your ZMP calculation function
+        squared_distance = sum((a - b) ** 2 for a, b in zip(zmp_robot, (0, 0)))
+        r_balance = 5 * math.exp(-squared_distance)
+
+        # Smooth motion reward
+        qacc = np.zeros(28)
+        qacc[6:] = (self.qvel_storage[-1][6:] - self.qvel_storage[-1][6:]) / self.dt
+        joint_accelerations = qacc
+        r_smooth = -10 * np.sum(np.square(joint_accelerations))
+
+        # Energy efficiency reward
+        joint_torques = action
+        r_energy = -1 * np.sum(np.square(joint_torques))
+
+        # Posture reward
+        torso_orientation = self.data.xquat[self.model.body("Torso").id]
+        r_posture = 3 * np.exp(-np.linalg.norm(torso_orientation - (1, 0, 0, 0)) ** 2)
+
+        # Time penalty
+        r_time = -1  # Constant penalty per step
+
+        left_foot_z = self.data.geom_xpos[self.data.body("LeftFoot").id][2]
+        right_foot_z = self.data.geom_xpos[self.data.body("RightFoot").id][2]
+        ground_z = 0.02755
+        contact_threshold = 0.2
+        soft_contact_threshold = 0.01
+        # self.debug_contacts( left_foot_contact,right_foot_contact)
+        if abs(left_foot_z - ground_z) > contact_threshold or abs(right_foot_z - ground_z) > contact_threshold:
+            # If the foot is too far from the ground, terminate the episode
+            self.terminated = True
+            r_contact = -50  # Apply a penalty for losing contact
+        elif abs(left_foot_z - ground_z) > soft_contact_threshold or abs(
+                right_foot_z - ground_z) > soft_contact_threshold:
+            # self.terminated = False
+            r_contact = -20
+        else:
+            r_contact = 20
+            # Fall penalty
+        if self.has_fallen():  # Implement this function to check for falls
+            r_fall = -5
+        else:
+            r_fall = 2
+
+        qpos_target = np.array([
+            0.01, 0, 0.28, 1, 0, 0, 0,
+            -8.05913e-19, 0.0144613, -0.371244, 0.918294, -0.54705, -0.0144613,
+            1.28944e-18, -0.0144613, -0.379635, 0.93573, -0.556095, 0.0144613,
+            0, 0, -0.63612, -0.04712, -0.37696, -1.67276, -0.7068, -0.04712, 0.98952, -1.46072
+        ])  # Your final position from XML
+        qpos = self.data.qpos
+        r_final = 50 * np.exp(-20 * np.linalg.norm(qpos - qpos_target) ** 2)
+        if np.linalg.norm(qpos - qpos_target) < 0.05:  # If very close to final position
+            r_final += 500  # Large bonus
+        # Total reward
+        total_reward = ( r_stand + r_balance + r_smooth + r_energy + r_posture + r_time + r_fall + r_contact + self.steps * 10 +
+                                   r_final) / 100
+
         w_i = 1 / 17
 
         # Terms for the reward function
