@@ -109,7 +109,7 @@ class HumanoidEnv(MujocoEnv):
         self.steps += 1
         # xy_position_before = mass_center(self.model, self.data)
         self.action=action
-        action=action*2.356
+        action=action*1.5
         self.cumulative_torque = 0.0
 
         self.previous_qpos = self.data.qpos.copy()
@@ -221,148 +221,14 @@ class HumanoidEnv(MujocoEnv):
 
     def reward(self):
 
-        # ### ------------ height reward and height gain reward
-        # height_weight=10
-        # height_gain_weight=5
-        # head_body_id = self.model.body("Head").id
-        # head_height = self.data.xipos[head_body_id][2]  # Current head height (z-coordinate)
-        #
-        # # Reward for getting closer to the target height
-        # height_reward = np.exp(-height_weight * abs(head_height - self.target_height))
-        #
-        # # Reward for increasing height compared to previous step
-        # if self.prev_height is None:
-        #     height_gain_reward = 0  # No change in first step
-        # else:
-        #     height_gain_reward = height_gain_weight * max(0, head_height - self.prev_height)
-        #
-        # # Update previous height for next step
-        # self.prev_height = head_height
-        #
-        # # ------------ feet movement and contact broken reward
-        # contact_reward_weight = 1.0
-        # sliding_penalty_weight = 2.0
-        # lifting_penalty_weight = 5.0  # Higher penalty for lifting
-        #
-        # # Get foot body IDs
-        # right_foot_id = self.model.body("RightFoot").id
-        # left_foot_id = self.model.body("LeftFoot").id
-        # # print(f"Right foot id: {right_foot_id}")
-        # # print(f"Left food id: {left_foot_id}")
-        #
-        # # Current foot positions
-        # right_foot_pos = self.data.xipos[right_foot_id]
-        # left_foot_pos = self.data.xipos[left_foot_id]
-        #
-        # # Reward for maintaining contact
-        # right_contact = any(
-        #     contact.geom1 == self.model.geom("floor").id and self.model.geom(contact.geom2).bodyid == right_foot_id
-        #     for contact in self.data.contact
-        # )
-        # # print (f"Right contact: {right_contact}")
-        #
-        # left_contact = any(
-        #     contact.geom1 == self.model.geom("floor").id and self.model.geom(contact.geom2).bodyid == left_foot_id
-        #     for contact in self.data.contact
-        # )
-        # # print(f"Left contact: {left_contact}")
-        #
-        # feet_contact_reward = contact_reward_weight * (int(right_contact) + int(left_contact))
-        #
-        # # Penalize unnecessary horizontal movement (x, y) - sliding
-        # right_foot_sliding = np.linalg.norm(right_foot_pos[:2] - self.rfp[:2])
-        # left_foot_sliding = np.linalg.norm(left_foot_pos[:2] - self.lfp[:2])
-        #
-        # # Penalize vertical lifting (z)
-        # right_foot_lifting = max(0, right_foot_pos[2] - self.rfp[2])  # Lift from initial height
-        # left_foot_lifting = max(0, left_foot_pos[2] - self.lfp[2])
-        #
-        # # Total penalty for foot movement (sliding + lifting)
-        # feet_movement_penalty = (
-        #         sliding_penalty_weight * (right_foot_sliding + left_foot_sliding) +
-        #         lifting_penalty_weight * (right_foot_lifting + left_foot_lifting)
-        # )
-        #
-        # # ------------ closeness orientation reward
-        # orientation_weight=2
-        # qpos_target= self.model.key_qpos[1].copy()
-        # qpos_current = self.data.qpos.copy()
-        # oreintation_reward= orientation_weight *np.exp(-20 * np.linalg.norm(qpos_current - qpos_target) ** 2)
-        # done_reward=0
-        # if np.linalg.norm(qpos_current - qpos_target) < 0.7:  # If very close to final position
-        #     done_reward = 5
-        #
-        # # ------------ zmp reward
-        # zmp_weight=1
-        # zmp_reward= zmp_weight* self._zmp_reward(self._calculate_zmp(), self._get_support_polygon())
-        #
-        # # ------------ joint limit penalty
-        # joint_limit_weight = 2.0  # Tune this weight as needed
-        # joint_limit_penalty = 0
-        #
-        # for j in range(self.model.njnt):
-        #     joint_angle = self.data.qpos[j]
-        #     joint_range = self.model.jnt_range[j]
-        #
-        #     # Check if the joint angle exceeds the limits
-        #     if joint_angle < joint_range[0] or joint_angle > joint_range[1]:
-        #         excess = min(abs(joint_angle - joint_range[0]), abs(joint_angle - joint_range[1]))
-        #         joint_limit_penalty += joint_limit_weight * excess ** 2
-        #
-        # # ------------ angular momentum penalty
-        # angular_momentum_weight = 0.1  # Tune this weight as needed
-        # angular_momentum = np.linalg.norm(self.data.cvel[0])  # Root link angular velocity
-        # angular_momentum_penalty = angular_momentum_weight * angular_momentum ** 2
-        #
-        # # ------------ time penalty
-        # time_penalty_weight = 0.01  # Tune this weight as needed
-        # time_penalty = time_penalty_weight * self.steps
-        #
-        # # ------------ smoothness and velocity penalty
-        # velocity_penalty_weight = 1.0
-        # acceleration_penalty_weight = 0.5
-        # smoothness_penalty_weight = 2.0
-        #
-        # # Get current joint velocities and accelerations
-        # joint_velocities = self.data.qvel
-        # joint_accelerations = self.data.qacc
-        #
-        # # Penalize high joint velocities (to reduce fast movements)
-        # velocity_penalty = velocity_penalty_weight * np.sum(np.square(joint_velocities))
-        #
-        # # Penalize high joint accelerations (to reduce jerky movements)
-        # acceleration_penalty = acceleration_penalty_weight * np.sum(np.square(joint_accelerations))
-        #
-        # # Penalize abrupt joint angle changes (smoothness penalty)
-        # if self.previous_qpos is not None:
-        #     joint_angle_diff = self.current_qpos - self.previous_qpos  # Difference from the previous step
-        #     smoothness_penalty = smoothness_penalty_weight * np.sum(np.square(joint_angle_diff))
-        # else:
-        #     smoothness_penalty = 0  # No penalty on the first step
-        #
-        # # Update the previous joint angles
-        # self.prev_joint_angles = joint_velocities.copy()
-        #
-        # # Total penalty for jerky or fast movements
-        # jerkiness_penalty = velocity_penalty + acceleration_penalty + smoothness_penalty
-        #
-        # ### ------------ torque penalty
-        # torque_penalty_weight = 0.1
-        # torque_penalty = torque_penalty_weight * self.cumulative_torque/self.decimations
-        #
-        # total_reward= (height_reward + height_gain_reward + feet_contact_reward + feet_movement_penalty + oreintation_reward + done_reward + zmp_reward - joint_limit_penalty - angular_momentum_penalty - time_penalty - jerkiness_penalty)
-        # reward_info= {"height_reward": height_reward, "height_gain_reward": height_gain_reward, "feet_contact_reward": feet_contact_reward, "feet_movement_penalty": feet_movement_penalty, "oreintation_reward": oreintation_reward, "done_reward": done_reward, "zmp_reward": zmp_reward, "joint_limit_penalty": joint_limit_penalty, "angular_momentum_penalty": angular_momentum_penalty, "time_penalty": time_penalty, "jerkiness_penalty": jerkiness_penalty}
-        #
-        # return total_reward ,reward_info
-
         ### ------------ height reward and height gain reward
-        height_weight = 10
-        height_gain_weight = 5
+        height_weight=10
+        height_gain_weight=5
         head_body_id = self.model.body("Head").id
         head_height = self.data.xipos[head_body_id][2]  # Current head height (z-coordinate)
 
-        # Reward for getting closer to the target height (clipped exponential)
-        height_reward = np.exp(-height_weight * min(1.0, abs(head_height - self.target_height)))
+        # Reward for getting closer to the target height
+        height_reward = np.exp(-height_weight * abs(head_height - self.target_height))
 
         # Reward for increasing height compared to previous step
         if self.prev_height is None:
@@ -373,14 +239,18 @@ class HumanoidEnv(MujocoEnv):
         # Update previous height for next step
         self.prev_height = head_height
 
-        ### ------------ feet movement and contact broken reward
+        # ------------ feet movement and contact broken reward
         contact_reward_weight = 1.0
         sliding_penalty_weight = 2.0
-        lifting_penalty_weight = 5.0
+        lifting_penalty_weight = 5.0  # Higher penalty for lifting
 
+        # Get foot body IDs
         right_foot_id = self.model.body("RightFoot").id
         left_foot_id = self.model.body("LeftFoot").id
+        # print(f"Right foot id: {right_foot_id}")
+        # print(f"Left food id: {left_foot_id}")
 
+        # Current foot positions
         right_foot_pos = self.data.xipos[right_foot_id]
         left_foot_pos = self.data.xipos[left_foot_id]
 
@@ -389,105 +259,236 @@ class HumanoidEnv(MujocoEnv):
             contact.geom1 == self.model.geom("floor").id and self.model.geom(contact.geom2).bodyid == right_foot_id
             for contact in self.data.contact
         )
+        # print (f"Right contact: {right_contact}")
+
         left_contact = any(
             contact.geom1 == self.model.geom("floor").id and self.model.geom(contact.geom2).bodyid == left_foot_id
             for contact in self.data.contact
         )
+        # print(f"Left contact: {left_contact}")
+
         feet_contact_reward = contact_reward_weight * (int(right_contact) + int(left_contact))
 
-        # Penalize unnecessary horizontal movement (x, y) - sliding (clipped to avoid explosion)
-        right_foot_sliding = np.clip(np.linalg.norm(right_foot_pos[:2] - self.rfp[:2]), 0, 1.0)
-        left_foot_sliding = np.clip(np.linalg.norm(left_foot_pos[:2] - self.lfp[:2]), 0, 1.0)
+        # Penalize unnecessary horizontal movement (x, y) - sliding
+        right_foot_sliding = np.linalg.norm(right_foot_pos[:2] - self.rfp[:2])
+        left_foot_sliding = np.linalg.norm(left_foot_pos[:2] - self.lfp[:2])
 
         # Penalize vertical lifting (z)
-        right_foot_lifting = np.clip(max(0, right_foot_pos[2] - self.rfp[2]), 0, 0.5)
-        left_foot_lifting = np.clip(max(0, left_foot_pos[2] - self.lfp[2]), 0, 0.5)
+        right_foot_lifting = max(0, right_foot_pos[2] - self.rfp[2])  # Lift from initial height
+        left_foot_lifting = max(0, left_foot_pos[2] - self.lfp[2])
 
+        # Total penalty for foot movement (sliding + lifting)
         feet_movement_penalty = (
                 sliding_penalty_weight * (right_foot_sliding + left_foot_sliding) +
                 lifting_penalty_weight * (right_foot_lifting + left_foot_lifting)
         )
 
-        ### ------------ closeness orientation reward
-        orientation_weight = 2
-        qpos_target = self.model.key_qpos[1].copy()
+        # ------------ closeness orientation reward
+        orientation_weight=2
+        qpos_target= self.model.key_qpos[1].copy()
         qpos_current = self.data.qpos.copy()
+        oreintation_reward= orientation_weight *np.exp(-20 * np.linalg.norm(qpos_current - qpos_target) ** 2)
+        done_reward=0
+        if np.linalg.norm(qpos_current - qpos_target) < 0.7:  # If very close to final position
+            done_reward = 5
 
-        # Normalized orientation reward (bounded)
-        orientation_reward = orientation_weight / (1 + 10 * np.linalg.norm(qpos_current - qpos_target))
+        # ------------ zmp reward
+        zmp_weight=1
+        zmp_reward= zmp_weight* self._zmp_reward(self._calculate_zmp(), self._get_support_polygon())
 
-        done_reward = 5 if np.linalg.norm(qpos_current - qpos_target) < 0.7 else 0
-
-        ### ------------ zmp reward
-        zmp_weight = 1
-        zmp_reward = zmp_weight * self._zmp_reward(self._calculate_zmp(), self._get_support_polygon())
-
-        ### ------------ joint limit penalty
-        joint_limit_weight = 2.0
+        # ------------ joint limit penalty
+        joint_limit_weight = 2.0  # Tune this weight as needed
         joint_limit_penalty = 0
 
         for j in range(self.model.njnt):
             joint_angle = self.data.qpos[j]
             joint_range = self.model.jnt_range[j]
+
+            # Check if the joint angle exceeds the limits
             if joint_angle < joint_range[0] or joint_angle > joint_range[1]:
                 excess = min(abs(joint_angle - joint_range[0]), abs(joint_angle - joint_range[1]))
-                joint_limit_penalty += joint_limit_weight * min(1.0, excess ** 2)  # Capped penalty
+                joint_limit_penalty += joint_limit_weight * excess ** 2
+        joint_limit_penalty*=0
 
-        ### ------------ angular momentum penalty
-        angular_momentum_weight = 0.1
-        angular_momentum = np.linalg.norm(self.data.cvel[0])
-        angular_momentum_penalty = angular_momentum_weight * min(5.0, angular_momentum ** 2)  # Capped penalty
+        # ------------ angular momentum penalty
+        angular_momentum_weight = 0.1  # Tune this weight as needed
+        angular_momentum = np.linalg.norm(self.data.cvel[0])  # Root link angular velocity
+        angular_momentum_penalty = angular_momentum_weight * angular_momentum ** 2
 
-        ### ------------ time penalty
-        time_penalty_weight = 0.01
+        # ------------ time penalty
+        time_penalty_weight = 0.01  # Tune this weight as needed
         time_penalty = time_penalty_weight * self.steps
 
-        ### ------------ smoothness and velocity penalty
+        # ------------ smoothness and velocity penalty
         velocity_penalty_weight = 1.0
         acceleration_penalty_weight = 0.5
         smoothness_penalty_weight = 2.0
 
+        # Get current joint velocities and accelerations
         joint_velocities = self.data.qvel
         joint_accelerations = self.data.qacc
 
-        velocity_penalty = velocity_penalty_weight * np.clip(np.sum(np.square(joint_velocities)), 0, 50)
-        acceleration_penalty = acceleration_penalty_weight * np.clip(np.sum(np.square(joint_accelerations)), 0, 20)
+        # Penalize high joint velocities (to reduce fast movements)
+        velocity_penalty = velocity_penalty_weight * np.sum(np.square(joint_velocities))
 
+        # Penalize high joint accelerations (to reduce jerky movements)
+        acceleration_penalty = acceleration_penalty_weight * np.sum(np.square(joint_accelerations))
+
+        # Penalize abrupt joint angle changes (smoothness penalty)
         if self.previous_qpos is not None:
-            joint_angle_diff = self.current_qpos - self.previous_qpos
-            smoothness_penalty = smoothness_penalty_weight * np.clip(np.sum(np.square(joint_angle_diff)), 0, 10)
+            joint_angle_diff = self.current_qpos - self.previous_qpos  # Difference from the previous step
+            smoothness_penalty = smoothness_penalty_weight * np.sum(np.square(joint_angle_diff))
         else:
-            smoothness_penalty = 0
+            smoothness_penalty = 0  # No penalty on the first step
 
+        # Update the previous joint angles
         self.prev_joint_angles = joint_velocities.copy()
 
-        jerkiness_penalty = velocity_penalty + acceleration_penalty + smoothness_penalty
+        # Total penalty for jerky or fast movements
+        jerkiness_penalty = (velocity_penalty + acceleration_penalty + smoothness_penalty)*0
 
         ### ------------ torque penalty
         torque_penalty_weight = 0.1
-        torque_penalty = torque_penalty_weight * (self.cumulative_torque / (self.decimations + 1e-6))  # Safe division
+        torque_penalty = torque_penalty_weight * self.cumulative_torque/self.decimations
 
-        ### ------------ total reward calculation
-        total_reward = (
-                height_reward + height_gain_reward + feet_contact_reward +
-                orientation_reward + done_reward + zmp_reward -
-                (feet_movement_penalty + joint_limit_penalty + angular_momentum_penalty +
-                 time_penalty + jerkiness_penalty + torque_penalty)
-        )
+        total_reward= (height_reward + height_gain_reward + feet_contact_reward + feet_movement_penalty + oreintation_reward + done_reward + zmp_reward - joint_limit_penalty - angular_momentum_penalty - time_penalty - jerkiness_penalty)
+        reward_info= {"height_reward": height_reward, "height_gain_reward": height_gain_reward, "feet_contact_reward": feet_contact_reward, "feet_movement_penalty": feet_movement_penalty, "oreintation_reward": oreintation_reward, "done_reward": done_reward, "zmp_reward": zmp_reward, "joint_limit_penalty": joint_limit_penalty, "angular_momentum_penalty": angular_momentum_penalty, "time_penalty": time_penalty, "jerkiness_penalty": jerkiness_penalty}
 
-        # Reward Clipping (to prevent reward explosion)
-        total_reward = np.clip(total_reward, -50, 50)
+        return total_reward ,reward_info
 
-        reward_info = {
-            "height_reward": height_reward, "height_gain_reward": height_gain_reward,
-            "feet_contact_reward": feet_contact_reward, "feet_movement_penalty": feet_movement_penalty,
-            "orientation_reward": orientation_reward, "done_reward": done_reward,
-            "zmp_reward": zmp_reward, "joint_limit_penalty": joint_limit_penalty,
-            "angular_momentum_penalty": angular_momentum_penalty, "time_penalty": time_penalty,
-            "jerkiness_penalty": jerkiness_penalty, "torque_penalty": torque_penalty
-        }
-
-        return total_reward, reward_info
+        # ### ------------ height reward and height gain reward
+        # height_weight = 10
+        # height_gain_weight = 5
+        # head_body_id = self.model.body("Head").id
+        # head_height = self.data.xipos[head_body_id][2]  # Current head height (z-coordinate)
+        #
+        # # Reward for getting closer to the target height (clipped exponential)
+        # height_reward = np.exp(-height_weight * min(1.0, abs(head_height - self.target_height)))
+        #
+        # # Reward for increasing height compared to previous step
+        # if self.prev_height is None:
+        #     height_gain_reward = 0  # No change in first step
+        # else:
+        #     height_gain_reward = height_gain_weight * max(0, head_height - self.prev_height)
+        #
+        # # Update previous height for next step
+        # self.prev_height = head_height
+        #
+        # ### ------------ feet movement and contact broken reward
+        # contact_reward_weight = 1.0
+        # sliding_penalty_weight = 2.0
+        # lifting_penalty_weight = 5.0
+        #
+        # right_foot_id = self.model.body("RightFoot").id
+        # left_foot_id = self.model.body("LeftFoot").id
+        #
+        # right_foot_pos = self.data.xipos[right_foot_id]
+        # left_foot_pos = self.data.xipos[left_foot_id]
+        #
+        # # Reward for maintaining contact
+        # right_contact = any(
+        #     contact.geom1 == self.model.geom("floor").id and self.model.geom(contact.geom2).bodyid == right_foot_id
+        #     for contact in self.data.contact
+        # )
+        # left_contact = any(
+        #     contact.geom1 == self.model.geom("floor").id and self.model.geom(contact.geom2).bodyid == left_foot_id
+        #     for contact in self.data.contact
+        # )
+        # feet_contact_reward = contact_reward_weight * (int(right_contact) + int(left_contact))
+        #
+        # # Penalize unnecessary horizontal movement (x, y) - sliding (clipped to avoid explosion)
+        # right_foot_sliding = np.clip(np.linalg.norm(right_foot_pos[:2] - self.rfp[:2]), 0, 1.0)
+        # left_foot_sliding = np.clip(np.linalg.norm(left_foot_pos[:2] - self.lfp[:2]), 0, 1.0)
+        #
+        # # Penalize vertical lifting (z)
+        # right_foot_lifting = np.clip(max(0, right_foot_pos[2] - self.rfp[2]), 0, 0.5)
+        # left_foot_lifting = np.clip(max(0, left_foot_pos[2] - self.lfp[2]), 0, 0.5)
+        #
+        # feet_movement_penalty = (
+        #         sliding_penalty_weight * (right_foot_sliding + left_foot_sliding) +
+        #         lifting_penalty_weight * (right_foot_lifting + left_foot_lifting)
+        # )
+        #
+        # ### ------------ closeness orientation reward
+        # orientation_weight = 2
+        # qpos_target = self.model.key_qpos[1].copy()
+        # qpos_current = self.data.qpos.copy()
+        #
+        # # Normalized orientation reward (bounded)
+        # orientation_reward = orientation_weight / (1 + 10 * np.linalg.norm(qpos_current - qpos_target))
+        #
+        # done_reward = 5 if np.linalg.norm(qpos_current - qpos_target) < 0.7 else 0
+        #
+        # ### ------------ zmp reward
+        # zmp_weight = 1
+        # zmp_reward = zmp_weight * self._zmp_reward(self._calculate_zmp(), self._get_support_polygon())
+        #
+        # ### ------------ joint limit penalty
+        # joint_limit_weight = 2.0
+        # joint_limit_penalty = 0
+        #
+        # for j in range(self.model.njnt):
+        #     joint_angle = self.data.qpos[j]
+        #     joint_range = self.model.jnt_range[j]
+        #     if joint_angle < joint_range[0] or joint_angle > joint_range[1]:
+        #         excess = min(abs(joint_angle - joint_range[0]), abs(joint_angle - joint_range[1]))
+        #         joint_limit_penalty += joint_limit_weight * min(1.0, excess ** 2)  # Capped penalty
+        #
+        # ### ------------ angular momentum penalty
+        # angular_momentum_weight = 0.1
+        # angular_momentum = np.linalg.norm(self.data.cvel[0])
+        # angular_momentum_penalty = angular_momentum_weight * min(5.0, angular_momentum ** 2)  # Capped penalty
+        #
+        # ### ------------ time penalty
+        # time_penalty_weight = 0.01
+        # time_penalty = time_penalty_weight * self.steps
+        #
+        # ### ------------ smoothness and velocity penalty
+        # velocity_penalty_weight = 1.0
+        # acceleration_penalty_weight = 0.5
+        # smoothness_penalty_weight = 2.0
+        #
+        # joint_velocities = self.data.qvel
+        # joint_accelerations = self.data.qacc
+        #
+        # velocity_penalty = velocity_penalty_weight * np.clip(np.sum(np.square(joint_velocities)), 0, 50)
+        # acceleration_penalty = acceleration_penalty_weight * np.clip(np.sum(np.square(joint_accelerations)), 0, 20)
+        #
+        # if self.previous_qpos is not None:
+        #     joint_angle_diff = self.current_qpos - self.previous_qpos
+        #     smoothness_penalty = smoothness_penalty_weight * np.clip(np.sum(np.square(joint_angle_diff)), 0, 10)
+        # else:
+        #     smoothness_penalty = 0
+        #
+        # self.prev_joint_angles = joint_velocities.copy()
+        #
+        # jerkiness_penalty = velocity_penalty + acceleration_penalty + smoothness_penalty
+        #
+        # ### ------------ torque penalty
+        # torque_penalty_weight = 0.1
+        # torque_penalty = torque_penalty_weight * (self.cumulative_torque / (self.decimations + 1e-6))  # Safe division
+        #
+        # ### ------------ total reward calculation
+        # total_reward = (
+        #         height_reward + height_gain_reward + feet_contact_reward +
+        #         orientation_reward + done_reward + zmp_reward -
+        #         (feet_movement_penalty + joint_limit_penalty + angular_momentum_penalty +
+        #          time_penalty + jerkiness_penalty + torque_penalty)
+        # )
+        #
+        # # Reward Clipping (to prevent reward explosion)
+        # total_reward = np.clip(total_reward, -50, 50)
+        #
+        # reward_info = {
+        #     "height_reward": height_reward, "height_gain_reward": height_gain_reward,
+        #     "feet_contact_reward": feet_contact_reward, "feet_movement_penalty": feet_movement_penalty,
+        #     "orientation_reward": orientation_reward, "done_reward": done_reward,
+        #     "zmp_reward": zmp_reward, "joint_limit_penalty": joint_limit_penalty,
+        #     "angular_momentum_penalty": angular_momentum_penalty, "time_penalty": time_penalty,
+        #     "jerkiness_penalty": jerkiness_penalty, "torque_penalty": torque_penalty
+        # }
+        #
+        # return total_reward, reward_info
 
     def get_projected_gravity(self):
         # Gravity vector in world frame
